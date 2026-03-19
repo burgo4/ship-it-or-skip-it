@@ -499,7 +499,6 @@ export default function Game({ initialCards }: Props) {
     let rankHtml = null
     if (submitted && myTs !== null && lb.length > 0) {
       const rk = calcRank(lb, score, myTs, TODAY)
-      const label = rk.topPct <= 1 ? 'top 1%' : `top ${rk.topPct}%`
       rankHtml = (
         <div className="rank-box">
           <div className="rank-row">
@@ -593,21 +592,7 @@ export default function Game({ initialCards }: Props) {
     const myScore = submitted && myTs ? lb.find((e) => e.ts === myTs)?.score ?? null : null
     const tough = calcToughest(lb, deck, TODAY)
 
-    let topPctBanner = null
-    if (submitted && myTs !== null && total >= 3 && myScore !== null) {
-      const rk = calcRank(lb, myScore, myTs, TODAY)
-      // Only show when actually flattering (top 50% or better)
-      if (rk.topPct <= 50) {
-        const label = rk.topPct <= 1 ? 'top 1%' : `top ${rk.topPct}%`
-        topPctBanner = (
-          <div className="top-pct-banner">
-            <span className="top-pct-label">Your standing today</span>
-            <span className="top-pct-val">You are in the {label}</span>
-            <span className="top-pct-sub">of all players today</span>
-          </div>
-        )
-      }
-    }
+    const topPctBanner = null
 
     return (
       <div className="card-wrap">
