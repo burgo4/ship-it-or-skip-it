@@ -111,22 +111,6 @@ function computeUsage(cards: Card[], date: string): Map<number, number> {
 // ─── PUBLIC API ──────────────────────────────────────────────────────────────
 
 export function getDailyDeck(cards: Card[], date: string): Card[] {
-  if (date < EPOCH) {
-    // Legacy behaviour for dates before LRU tracking started
-    const seed = dateToSeed(date)
-    const shuffled = seededShuffle(cards, seed)
-    const seen = new Set<string>()
-    const deck: Card[] = []
-    for (const card of shuffled) {
-      if (!seen.has(card.co)) {
-        seen.add(card.co)
-        deck.push(card)
-        if (deck.length === 10) break
-      }
-    }
-    return deck
-  }
-
   const usage = computeUsage(cards, date)
   return pickDeck(cards, date, usage)
 }
