@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, ScoreEntry, Screen, Answer } from '@/types'
 import { getDailyDeck, getTodayString } from '@/lib/deck'
 import { calcRank, calcDist, calcToughest, fmtTime, getTitle } from '@/lib/helpers'
+import { calculateStreak, getWeekDots } from '@/lib/streak'
 
 interface Props {
   initialCards: Card[]
@@ -149,6 +150,8 @@ export default function Game({ initialCards }: Props) {
   const [reviewIdx, setReviewIdx] = useState(0)
   const [lbLoading, setLbLoading] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [streakDates, setStreakDates] = useState<string[]>([])
+  const [streakReady, setStreakReady] = useState(false)
 
   const flyLock = useRef(false)
   const isDragging = useRef(false)
@@ -184,6 +187,21 @@ export default function Game({ initialCards }: Props) {
       }
     } catch {}
   }, [TODAY])
+
+  const fetchStreak = useCallback(async () => {
+    try {
+      const deviceId = getOrCreateDeviceId()
+      const res = await fetch(`/api/streak?device_id=${encodeURIComponent(deviceId)}`)
+      if (!res.ok) return
+      const { dates } = await res.json()
+      setStreakDates(dates ?? [])
+    } catch {
+    } finally {
+      setStreakReady(true)
+    }
+  }, [])
+
+  useEffect(() => { fetchStreak() }, [fetchStreak])
 
   const loadLb = useCallback(async (): Promise<ScoreEntry[]> => {
     try {
@@ -359,14 +377,26 @@ export default function Game({ initialCards }: Props) {
       setMyTs(ts)
       setSubmitted(true)
       setSubmitError(null)
+      fetchStreak()
       const newLb = await loadLb()
       setLb(newLb)
     } catch {
       setSubmitError('Could not submit score. Please try again.')
     }
-  }, [name, answers, deck, score, TODAY, loadLb])
+  }, [name, answers, deck, score, TODAY, loadLb, fetchStreak])
 
   // ─── SCREENS ─────────────────────────────────────────────────────────────────
+  // ─── STREAK ──────────────────────────────────────────────────────────────────
+  const yesterday = (() => {
+    const d = new Date(TODAY + 'T00:00:00Z')
+    d.setUTCDate(d.getUTCDate() - 1)
+    return d.toISOString().slice(0, 10)
+  })()
+  const hasHistory = streakDates.some((d) => d < TODAY)
+  const homeStreak = calculateStreak(streakDates, yesterday)
+  const scoreStreak = calculateStreak(streakDates, TODAY)
+  const weekDots = getWeekDots(streakDates, TODAY)
+
   const card = deck[index]
   const dotClasses = renderDots(index)
   const reviewDotClasses = renderDots(reviewIdx, true)
@@ -378,7 +408,30 @@ export default function Game({ initialCards }: Props) {
           <h1>Would you have made the call?</h1>
           <p>10 real decisions from companies you know. One daily deck. Same cards for everyone.</p>
         </div>
-        {name && <p className="attr">Welcome back, {name}</p>}
+        {streakReady && hasHistory && (
+          <>
+            <p className="attr">{name ? `Welcome back, ${name}` : 'Welcome back'}</p>
+            {homeStreak >= 2 && (
+              <p className="streak-line">You&apos;re on a 🔥 {homeStreak}-day streak!</p>
+            )}
+            {homeStreak === 1 && (
+              <p className="streak-line">Start your streak today 🔥</p>
+            )}
+            {homeStreak === 0 && (
+              <p className="streak-line">Ready to start a new streak? 🔥</p>
+            )}
+            <div className="week-dots-wrap">
+              <div className="week-labels">
+                {weekDots.map((d) => <span key={d.label} className="wdot-label">{d.label}</span>)}
+              </div>
+              <div className="week-dots">
+                {weekDots.map((d) => (
+                  <div key={d.label} className={`wdot${d.played ? ' wdot-played' : ''}${d.isToday ? ' wdot-today' : ''}`} />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
         <button
           className="btn btn-orange btn-w"
           onClick={() => setScreen('playing')}
@@ -525,6 +578,9 @@ export default function Game({ initialCards }: Props) {
           </div>
           <div className="sc-title">{r.title}</div>
           <div className="sc-sub">{r.sub}</div>
+          {submitted && streakReady && scoreStreak >= 2 && (
+            <div className="streak-count">🔥 {scoreStreak}-day streak</div>
+          )}
         </div>
         <div className="sdots">
           {answers.map((a, i) => (
@@ -535,6 +591,13 @@ export default function Game({ initialCards }: Props) {
         {!submitted && (
           <div className="name-wrap">
             <span className="nlbl">Add your score to the global leaderboard</span>
+            {streakReady && hasHistory && (
+              <span className="streak-hint">
+                {homeStreak >= 1
+                  ? `You're on a ${homeStreak}-day streak — don't break it`
+                  : 'Start a new streak today'}
+              </span>
+            )}
             <div className="name-row">
               <input
                 type="text"
@@ -578,7 +641,15 @@ export default function Game({ initialCards }: Props) {
           </button>
         </div>
         <ShareRow score={score} answers={answers} title={getTitle(score).title} />
-        <p className="tomorrow">Come back tomorrow for fresh decisions.</p>
+        <p className="tomorrow">
+          {submitted && streakReady
+            ? scoreStreak >= 2
+              ? 'Come back tomorrow to keep your streak alive 🔥'
+              : scoreStreak === 1
+                ? 'Come back tomorrow to start a streak 🔥'
+                : 'Come back tomorrow for fresh decisions.'
+            : 'Come back tomorrow for fresh decisions.'}
+        </p>
       </div>
     )
   }
