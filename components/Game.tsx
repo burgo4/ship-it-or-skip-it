@@ -590,14 +590,13 @@ export default function Game({ initialCards }: Props) {
         {rankHtml}
         {!submitted && (
           <div className="name-wrap">
-            <span className="nlbl">Add your score to the global leaderboard</span>
-            {streakReady && hasHistory && (
-              <span className="streak-hint">
-                {homeStreak >= 1
-                  ? `You're on a ${homeStreak}-day streak — don't break it`
-                  : 'Start a new streak today'}
-              </span>
-            )}
+            <span className="nlbl">
+              {streakReady && homeStreak >= 2
+                ? `You're on a ${homeStreak}-day streak, submit to keep it alive 🔥`
+                : streakReady && homeStreak === 1
+                  ? 'Submit your score to continue your streak 🔥'
+                  : 'Submit your score to start a streak 🔥'}
+            </span>
             <div className="name-row">
               <input
                 type="text"
