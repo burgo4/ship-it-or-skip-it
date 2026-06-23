@@ -47,6 +47,9 @@ export default async function Home() {
       <p className="page-attr">
         Built on · <a href="https://www.lennysdata.com/" target="_blank" rel="noopener noreferrer">Lenny&apos;s Data</a> · 349 newsletters · 289 podcasts
       </p>
+      <p className="page-attr" style={{ marginTop: '4px', opacity: 0.7 }}>
+        by <a href="https://ppoljak.vercel.app/" target="_blank" rel="noopener noreferrer">@ppoljak</a>
+      </p>
     </>
   )
 }
